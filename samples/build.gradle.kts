@@ -71,10 +71,12 @@ android {
 }
 
 dependencies {
-    implementation(projects.commons)
+//    implementation(projects.commons)
+    //noinspection UseTomlInstead
+    implementation("com.github.gj-loitp:lib_Commons:1.0.0")
+
     implementation(libs.material)
     implementation(libs.androidx.swiperefreshlayout)
-
     implementation(libs.bundles.lifecycle)
     implementation(libs.bundles.compose)
     debugImplementation(libs.bundles.compose.preview)
