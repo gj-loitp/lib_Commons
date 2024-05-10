@@ -313,7 +313,7 @@ fun Context.queryCursor(
     selectionArgs: Array<String>? = null,
     sortOrder: String? = null,
     showErrors: Boolean = false,
-    callback: (cursor: Cursor) -> Unit
+    callback: (cursor: Cursor) -> Unit,
 ) {
     try {
         val cursor = contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)
@@ -337,7 +337,7 @@ fun Context.queryCursor(
     projection: Array<String>,
     queryArgs: Bundle,
     showErrors: Boolean = false,
-    callback: (cursor: Cursor) -> Unit
+    callback: (cursor: Cursor) -> Unit,
 ) {
     try {
         val cursor = contentResolver.query(uri, projection, queryArgs, null)
@@ -489,8 +489,6 @@ fun Context.isOrWasThankYouInstalled(): Boolean {
         else -> false
     }
 }
-
-fun Context.isAProApp() = packageName.startsWith("org.fossify.") && packageName.removeSuffix(".debug").endsWith(".pro")
 
 fun Context.getCustomizeColorsString(): String {
     val textId = if (isOrWasThankYouInstalled()) {
@@ -987,14 +985,7 @@ fun Context.getCornerRadius() = resources.getDimension(R.dimen.rounded_corner_ra
 
 // we need the Default Dialer functionality only in Simple Dialer and in Simple Contacts for now
 fun Context.isDefaultDialer(): Boolean {
-    return if (!packageName.startsWith("org.fossify.contacts") && !packageName.startsWith("org.fossify.phone")) {
-        true
-    } else if ((packageName.startsWith("org.fossify.contacts") || packageName.startsWith("org.fossify.phone")) && isQPlus()) {
-        val roleManager = getSystemService(RoleManager::class.java)
-        roleManager!!.isRoleAvailable(RoleManager.ROLE_DIALER) && roleManager.isRoleHeld(RoleManager.ROLE_DIALER)
-    } else {
-        telecomManager.defaultDialerPackage == packageName
-    }
+    return telecomManager.defaultDialerPackage == packageName
 }
 
 fun Context.getContactsHasMap(withComparableNumbers: Boolean = false, callback: (HashMap<String, String>) -> Unit) {

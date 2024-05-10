@@ -18,7 +18,7 @@ fun ComponentActivity.appLaunchedCompose(
     appId: String,
     showUpgradeDialog: () -> Unit,
     showDonateDialog: () -> Unit,
-    showRateUsDialog: () -> Unit
+    showRateUsDialog: () -> Unit,
 ) {
     baseConfig.internalStoragePath = getInternalStoragePath()
     updateSDCardPath()
@@ -54,15 +54,15 @@ fun ComponentActivity.appLaunchedCompose(
     }
 
     baseConfig.appRunCount++
-    if (baseConfig.appRunCount % 30 == 0 && !isAProApp()) {
-        if (!resources.getBoolean(R.bool.hide_google_relations)) {
-            if (getCanAppBeUpgraded()) {
-                showUpgradeDialog()
-            } else if (!isOrWasThankYouInstalled()) {
-                showDonateDialog()
-            }
-        }
-    }
+//    if (baseConfig.appRunCount % 30 == 0 && !isAProApp()) {
+//        if (!resources.getBoolean(R.bool.hide_google_relations)) {
+//            if (getCanAppBeUpgraded()) {
+//                showUpgradeDialog()
+//            } else if (!isOrWasThankYouInstalled()) {
+//                showDonateDialog()
+//            }
+//        }
+//    }
 
     if (baseConfig.appRunCount % 40 == 0 && !baseConfig.wasAppRated) {
         if (!resources.getBoolean(R.bool.hide_google_relations)) {
@@ -92,21 +92,9 @@ fun ComponentActivity.upgradeToPro() {
 }
 
 const val DEVELOPER_PLAY_STORE_URL = "https://play.google.com/store/apps/dev?id=7297838378654322558"
-const val FAKE_VERSION_APP_LABEL =
-    "You are using a fake version of the app. For your own safety download the original one from www.fossify.org. Thanks"
-
-fun Context.fakeVersionCheck(
-    showConfirmationDialog: () -> Unit
-) {
-    if (!packageName.startsWith("org.fossify.", true)) {
-        if ((0..50).random() == 10 || baseConfig.appRunCount % 100 == 0) {
-            showConfirmationDialog()
-        }
-    }
-}
 
 fun ComponentActivity.appOnSdCardCheckCompose(
-    showConfirmationDialog: () -> Unit
+    showConfirmationDialog: () -> Unit,
 ) {
     if (!baseConfig.wasAppOnSDShown && isAppInstalledOnSDCard()) {
         baseConfig.wasAppOnSDShown = true

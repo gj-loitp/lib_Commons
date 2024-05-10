@@ -143,7 +143,7 @@ class AboutActivity : ComponentActivity() {
                     if (success) {
                         launchFAQActivity()
                     } else {
-                        launchEmailIntent()
+                        launchEmailIntent("freuss48@gmail.com")
                     }
                 }
             }
@@ -176,7 +176,7 @@ class AboutActivity : ComponentActivity() {
             baseConfig.wasBeforeAskingShown = true
             showConfirmationAdvancedDialog()
         } else {
-            launchEmailIntent()
+            launchEmailIntent("freuss48@gmail.com")
         }
     }
 
@@ -190,19 +190,12 @@ class AboutActivity : ComponentActivity() {
         }
     }
 
-    private fun launchEmailIntent() {
+    private fun launchEmailIntent(address: String) {
         val appVersion = String.format(getString(R.string.app_version, intent.getStringExtra(APP_VERSION_NAME)))
         val deviceOS = String.format(getString(R.string.device_os), Build.VERSION.RELEASE)
         val newline = "\n"
         val separator = "------------------------------"
         val body = "$appVersion$newline$deviceOS$newline$separator$newline$newline"
-
-        val address = if (packageName.startsWith("org.fossify")) {
-            getString(R.string.my_email)
-        } else {
-            getString(R.string.my_fake_email)
-        }
-
         val selectorIntent = Intent(ACTION_SENDTO)
             .setData("mailto:$address".toUri())
         val emailIntent = Intent(ACTION_SEND).apply {

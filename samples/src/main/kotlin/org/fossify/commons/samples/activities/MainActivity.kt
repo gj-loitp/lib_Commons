@@ -42,14 +42,14 @@ class MainActivity : BaseSimpleActivity() {
                         startActivity(Intent(this@MainActivity, TestDialogActivity::class.java))
                     },
                     openTestButton = {
-                        ConfirmationDialog(
-                            this@MainActivity,
-                            FAKE_VERSION_APP_LABEL,
-                            positive = org.fossify.commons.R.string.ok,
-                            negative = 0
-                        ) {
-                            launchViewIntent(DEVELOPER_PLAY_STORE_URL)
-                        }
+//                        ConfirmationDialog(
+//                            this@MainActivity,
+//                            FAKE_VERSION_APP_LABEL,
+//                            positive = org.fossify.commons.R.string.ok,
+//                            negative = 0
+//                        ) {
+//                            launchViewIntent(DEVELOPER_PLAY_STORE_URL)
+//                        }
                     },
                     showMoreApps = showMoreApps,
                     openAbout = ::launchAbout,
