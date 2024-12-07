@@ -23,7 +23,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -36,7 +35,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
@@ -52,8 +50,8 @@ import org.fossify.commons.compose.lists.*
 import org.fossify.commons.compose.menus.ActionItem
 import org.fossify.commons.compose.menus.ActionMenu
 import org.fossify.commons.compose.menus.OverflowMode
-import org.fossify.commons.compose.settings.SettingsCheckBoxComponent
 import org.fossify.commons.compose.settings.SettingsHorizontalDivider
+import org.fossify.commons.compose.settings.SettingsSwitchComponent
 import org.fossify.commons.compose.system_ui_controller.rememberSystemUiController
 import org.fossify.commons.compose.theme.*
 import org.fossify.commons.compose.theme.model.Theme
@@ -77,6 +75,7 @@ internal fun ManageBlockedNumbersScreen(
     isDialer: Boolean,
     hasGivenPermissionToBlock: Boolean,
     isBlockUnknownSelected: Boolean,
+    showCheckmarksOnSwitches: Boolean,
     onBlockUnknownSelectedChange: (Boolean) -> Unit,
     isHiddenSelected: Boolean,
     onHiddenSelectedChange: (Boolean) -> Unit,
@@ -105,9 +104,12 @@ internal fun ManageBlockedNumbersScreen(
                 colorTransitionFraction: Float,
                 contrastColor: Color,
             ->
-
             Column {
-                Crossfade(targetState = isInActionMode, label = "toolbar-anim", animationSpec = tween(easing = FastOutLinearInEasing)) { actionMode ->
+                Crossfade(
+                    targetState = isInActionMode,
+                    label = "toolbar-anim",
+                    animationSpec = tween(easing = FastOutLinearInEasing)
+                ) { actionMode ->
                     if (actionMode && blockedNumbers != null) {
                         ActionModeToolbar(
                             selectedIdsCount = selectedIds.value.count(),
@@ -141,17 +143,19 @@ internal fun ManageBlockedNumbersScreen(
                     }
                 }
 
-                SettingsCheckBoxComponent(
+                SettingsSwitchComponent(
                     label = if (isDialer) stringResource(id = R.string.block_unknown_calls) else stringResource(id = R.string.block_unknown_messages),
                     initialValue = isBlockUnknownSelected,
                     onChange = onBlockUnknownSelectedChange,
                     modifier = Modifier.topAppBarPaddings(),
+                    showCheckmark = showCheckmarksOnSwitches
                 )
-                SettingsCheckBoxComponent(
+                SettingsSwitchComponent(
                     label = if (isDialer) stringResource(id = R.string.block_hidden_calls) else stringResource(id = R.string.block_hidden_messages),
                     initialValue = isHiddenSelected,
                     onChange = onHiddenSelectedChange,
                     modifier = Modifier.topAppBarPaddings(),
+                    showCheckmark = showCheckmarksOnSwitches
                 )
                 SettingsHorizontalDivider(modifier = Modifier.topAppBarPaddings())
             }
@@ -213,7 +217,7 @@ internal fun ManageBlockedNumbersScreen(
                         val isSelected = selectedIds.value.contains(blockedNumber.id)
                         BlockedNumber(
                             modifier = Modifier
-                                .animateItemPlacement()
+                                .animateItem()
                                 .semantics {
                                     if (!isInActionMode) {
                                         onLongClick(ON_LONG_CLICK_LABEL) {
@@ -324,7 +328,6 @@ private fun BlockedNumber(
         movableContentOf {
             Text(
                 text = blockedNumber.contactName.toString(),
-                modifier = modifier.padding(horizontal = SimpleTheme.dimens.padding.medium, vertical = SimpleTheme.dimens.padding.extraSmall)
             )
         }
     }
@@ -381,7 +384,7 @@ private fun blockedNumberListItemColors(
 private fun BlockedNumberHeadlineContent(modifier: Modifier = Modifier, blockedNumber: BlockedNumber, hasContactName: Boolean) {
     Text(
         text = blockedNumber.number,
-        modifier = modifier.padding(horizontal = SimpleTheme.dimens.padding.medium),
+        modifier = modifier,
         color = if (hasContactName) LocalContentColor.current.copy(alpha = 0.7f) else LocalContentColor.current
     )
 }
@@ -461,11 +464,16 @@ private fun ActionModeToolbar(
                         } else {
                             onSelectAll()
                         }
-                    }
-                    .padding(horizontal = 18.dp), contentAlignment = Alignment.Center
+                    },
+                contentAlignment = Alignment.Center
             ) {
                 if (selectedIdsCount != 0) {
-                    Text(text = "$selectedIdsCount / $blockedNumbersCount", color = textColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        text = "$selectedIdsCount / $blockedNumbersCount",
+                        color = textColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
 
@@ -548,7 +556,6 @@ private fun NonActionModeToolbar(
         title = { scrolledTextColor ->
             Text(
                 text = stringResource(id = R.string.manage_blocked_numbers),
-                modifier = Modifier.padding(start = SimpleTheme.dimens.padding.medium),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = scrolledTextColor
@@ -584,29 +591,22 @@ private fun LazyListScope.emptyBlockedNumbers(
             style = TextStyle(fontStyle = FontStyle.Italic, textAlign = TextAlign.Center, color = SimpleTheme.colorScheme.onSurface),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = SimpleTheme.dimens.padding.extraLarge, bottom = SimpleTheme.dimens.padding.small)
+                .padding(
+                    top = SimpleTheme.dimens.padding.extraLarge,
+                    bottom = SimpleTheme.dimens.padding.medium
+                )
                 .padding(horizontal = SimpleTheme.dimens.padding.extraLarge)
         )
     }
     item {
         Box(
             modifier = Modifier
-                .fillMaxWidth(), contentAlignment = Alignment.Center
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .clip(Shapes.large)
-                    .clickable(onClick = addABlockedNumber)
-            ) {
+            OutlinedButton(onClick = addABlockedNumber) {
                 Text(
                     text = stringResource(id = R.string.add_a_blocked_number),
-                    style = TextStyle(
-                        textAlign = TextAlign.Center,
-                        textDecoration = TextDecoration.Underline,
-                        color = SimpleTheme.colorScheme.primary,
-                        fontSize = 18.sp
-                    ),
-                    modifier = Modifier.padding(SimpleTheme.dimens.padding.medium)
                 )
             }
         }
@@ -622,29 +622,21 @@ private fun LazyListScope.noPermissionToBlock(
             style = TextStyle(fontStyle = FontStyle.Italic, textAlign = TextAlign.Center),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = SimpleTheme.dimens.padding.extraLarge)
+                .padding(
+                    top = SimpleTheme.dimens.padding.extraLarge,
+                    bottom = SimpleTheme.dimens.padding.medium
+                )
                 .padding(horizontal = SimpleTheme.dimens.padding.extraLarge)
         )
     }
     item {
         Box(
-            modifier = Modifier
-                .fillMaxWidth(), contentAlignment = Alignment.Center
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .clip(Shapes.large)
-                    .clickable(onClick = setAsDefault)
-            ) {
+            Button(onClick = setAsDefault) {
                 Text(
                     text = stringResource(id = R.string.set_as_default),
-                    style = TextStyle(
-                        textAlign = TextAlign.Center,
-                        textDecoration = TextDecoration.Underline,
-                        color = SimpleTheme.colorScheme.primary,
-                        fontSize = 18.sp
-                    ),
-                    modifier = Modifier.padding(SimpleTheme.dimens.padding.extraLarge)
                 )
             }
         }
@@ -664,6 +656,7 @@ private fun ManageBlockedNumbersScreenPreview(@PreviewParameter(BooleanPreviewPa
             isDialer = isDialer,
             hasGivenPermissionToBlock = !isDialer,
             isBlockUnknownSelected = false,
+            showCheckmarksOnSwitches = false,
             onBlockUnknownSelectedChange = {},
             isHiddenSelected = false,
             onHiddenSelectedChange = {},
