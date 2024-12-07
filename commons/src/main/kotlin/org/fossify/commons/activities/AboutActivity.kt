@@ -27,288 +27,288 @@ import org.fossify.commons.helpers.*
 import org.fossify.commons.models.FAQItem
 
 class AboutActivity : ComponentActivity() {
-    private val appName get() = intent.getStringExtra(APP_NAME) ?: ""
-
-    private var firstVersionClickTS = 0L
-    private var clicksSinceFirstClick = 0
-
-    companion object {
-        private const val EASTER_EGG_TIME_LIMIT = 3000L
-        private const val EASTER_EGG_REQUIRED_CLICKS = 7
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdgeSimple()
-        setContent {
-            val context = LocalContext.current
-            val resources = context.resources
-            AppThemeSurface {
-                val showExternalLinks = remember { !resources.getBoolean(R.bool.hide_all_external_links) }
-                val showGoogleRelations = remember { !resources.getBoolean(R.bool.hide_google_relations) }
-                val onEmailClickAlertDialogState = getOnEmailClickAlertDialogState()
-                val rateStarsAlertDialogState = getRateStarsAlertDialogState()
-                val onRateUsClickAlertDialogState = getOnRateUsClickAlertDialogState(rateStarsAlertDialogState::show)
-                AboutScreen(
-                    goBack = ::finish,
-                    helpUsSection = {
-                        val showHelpUsSection =
-                            remember { showGoogleRelations || !showExternalLinks }
-                        HelpUsSection(
-                            onRateUsClick = {
-                                onRateUsClick(
-                                    showConfirmationAdvancedDialog = onRateUsClickAlertDialogState::show,
-                                    showRateStarsDialog = rateStarsAlertDialogState::show
-                                )
-                            },
-                            onInviteClick = ::onInviteClick,
-                            onContributorsClick = ::onContributorsClick,
-                            showDonate = resources.getBoolean(R.bool.show_donate_in_about) && showExternalLinks,
-                            onDonateClick = ::onDonateClick,
-                            showInvite = showHelpUsSection,
-                            showRateUs = showHelpUsSection
-                        )
-                    },
-                    aboutSection = {
-                        val setupFAQ = rememberFAQ()
-                        if (!showExternalLinks || setupFAQ) {
-                            AboutSection(setupFAQ = setupFAQ, onFAQClick = ::launchFAQActivity, onEmailClick = {
-                                onEmailClick(onEmailClickAlertDialogState::show)
-                            })
-                        }
-                    },
-                    socialSection = {
-                        if (showExternalLinks) {
-                            SocialSection(
-                                onGithubClick = ::onGithubClick,
-                                onRedditClick = ::onRedditClick,
-                                onTelegramClick = ::onTelegramClick
-                            )
-                        }
-                    }
-                ) {
-                    val (showWebsite, fullVersion) = showWebsiteAndFullVersion(resources, showExternalLinks)
-                    OtherSection(
-                        showMoreApps = showGoogleRelations,
-                        onMoreAppsClick = ::launchMoreAppsFromUsIntent,
-                        showWebsite = showWebsite,
-                        onWebsiteClick = ::onWebsiteClick,
-                        showPrivacyPolicy = showExternalLinks,
-                        onPrivacyPolicyClick = ::onPrivacyPolicyClick,
-                        onLicenseClick = ::onLicenseClick,
-                        version = fullVersion,
-                        onVersionClick = ::onVersionClick
-                    )
-                }
-            }
-        }
-    }
-
-    @Composable
-    private fun rememberFAQ() = remember { !(intent.getSerializableExtra(APP_FAQ) as? ArrayList<FAQItem>).isNullOrEmpty() }
-
-    @Composable
-    private fun showWebsiteAndFullVersion(
-        resources: Resources,
-        showExternalLinks: Boolean,
-    ): Pair<Boolean, String> {
-        val showWebsite = remember { resources.getBoolean(R.bool.show_donate_in_about) && !showExternalLinks }
-        var version = intent.getStringExtra(APP_VERSION_NAME) ?: ""
-        if (baseConfig.appId.removeSuffix(".debug").endsWith(".pro")) {
-            version += " ${getString(R.string.pro)}"
-        }
-        val fullVersion = remember { String.format(getString(R.string.version_placeholder, version)) }
-        return Pair(showWebsite, fullVersion)
-    }
-
-    @Composable
-    private fun getRateStarsAlertDialogState() =
-        rememberAlertDialogState().apply {
-            DialogMember {
-                RateStarsAlertDialog(alertDialogState = this, onRating = ::rateStarsRedirectAndThankYou)
-            }
-        }
-
-    @Composable
-    private fun getOnEmailClickAlertDialogState() =
-        rememberAlertDialogState().apply {
-            DialogMember {
-                ConfirmationAdvancedAlertDialog(
-                    alertDialogState = this,
-                    message = "${getString(R.string.before_asking_question_read_faq)}\n\n${getString(R.string.make_sure_latest)}",
-                    messageId = null,
-                    positive = R.string.read_faq,
-                    negative = R.string.skip
-                ) { success ->
-                    if (success) {
-                        launchFAQActivity()
-                    } else {
-                        launchEmailIntent("freuss48@gmail.com")
-                    }
-                }
-            }
-        }
-
-    @Composable
-    private fun getOnRateUsClickAlertDialogState(showRateStarsDialog: () -> Unit) =
-        rememberAlertDialogState().apply {
-            DialogMember {
-                ConfirmationAdvancedAlertDialog(
-                    alertDialogState = this,
-                    message = "${getString(R.string.before_asking_question_read_faq)}\n\n${getString(R.string.make_sure_latest)}",
-                    messageId = null,
-                    positive = R.string.read_faq,
-                    negative = R.string.skip
-                ) { success ->
-                    if (success) {
-                        launchFAQActivity()
-                    } else {
-                        launchRateUsPrompt(showRateStarsDialog)
-                    }
-                }
-            }
-        }
-
-    private fun onEmailClick(
-        showConfirmationAdvancedDialog: () -> Unit,
-    ) {
-        if (intent.getBooleanExtra(SHOW_FAQ_BEFORE_MAIL, false) && !baseConfig.wasBeforeAskingShown) {
-            baseConfig.wasBeforeAskingShown = true
-            showConfirmationAdvancedDialog()
-        } else {
-            launchEmailIntent("freuss48@gmail.com")
-        }
-    }
-
-    private fun launchFAQActivity() {
-        val faqItems = intent.getSerializableExtra(APP_FAQ) as ArrayList<FAQItem>
-        Intent(applicationContext, FAQActivity::class.java).apply {
-            putExtra(APP_ICON_IDS, intent.getIntegerArrayListExtra(APP_ICON_IDS) ?: ArrayList<String>())
-            putExtra(APP_LAUNCHER_NAME, intent.getStringExtra(APP_LAUNCHER_NAME) ?: "")
-            putExtra(APP_FAQ, faqItems)
-            startActivity(this)
-        }
-    }
-
-    private fun launchEmailIntent(address: String) {
-        val appVersion = String.format(getString(R.string.app_version, intent.getStringExtra(APP_VERSION_NAME)))
-        val deviceOS = String.format(getString(R.string.device_os), Build.VERSION.RELEASE)
-        val newline = "\n"
-        val separator = "------------------------------"
-        val body = "$appVersion$newline$deviceOS$newline$separator$newline$newline"
-        val selectorIntent = Intent(ACTION_SENDTO)
-            .setData("mailto:$address".toUri())
-        val emailIntent = Intent(ACTION_SEND).apply {
-            putExtra(EXTRA_EMAIL, arrayOf(address))
-            putExtra(EXTRA_SUBJECT, appName)
-            putExtra(EXTRA_TEXT, body)
-            selector = selectorIntent
-        }
-
-        try {
-            startActivity(emailIntent)
-        } catch (e: ActivityNotFoundException) {
-            val chooser = createChooser(emailIntent, getString(R.string.send_email))
-            try {
-                startActivity(chooser)
-            } catch (e: Exception) {
-                toast(R.string.no_email_client_found)
-            }
-        } catch (e: Exception) {
-            showErrorToast(e)
-        }
-    }
-
-    private fun onRateUsClick(
-        showConfirmationAdvancedDialog: () -> Unit,
-        showRateStarsDialog: () -> Unit,
-    ) {
-        if (baseConfig.wasBeforeRateShown) {
-            launchRateUsPrompt(showRateStarsDialog)
-        } else {
-            baseConfig.wasBeforeRateShown = true
-            showConfirmationAdvancedDialog()
-        }
-    }
-
-    private fun launchRateUsPrompt(
-        showRateStarsDialog: () -> Unit,
-    ) {
-        if (baseConfig.wasAppRated) {
-            redirectToRateUs()
-        } else {
-            showRateStarsDialog()
-        }
-    }
-
-    private fun onInviteClick() {
-        val text = String.format(getString(R.string.share_text), appName, getStoreUrl())
-        Intent().apply {
-            action = ACTION_SEND
-            putExtra(EXTRA_SUBJECT, appName)
-            putExtra(EXTRA_TEXT, text)
-            type = "text/plain"
-            startActivity(createChooser(this, getString(R.string.invite_via)))
-        }
-    }
-
-    private fun onContributorsClick() {
-        val intent = Intent(applicationContext, ContributorsActivity::class.java)
-        startActivity(intent)
-    }
-
-
-    private fun onDonateClick() {
-        startActivity(Intent(applicationContext, DonationActivity::class.java))
-    }
-
-    private fun onGithubClick() {
-        launchViewIntent("https://github.com/FossifyOrg")
-    }
-
-    private fun onRedditClick() {
-        launchViewIntent("https://www.reddit.com/r/Fossify")
-    }
-
-
-    private fun onTelegramClick() {
-        launchViewIntent("https://t.me/Fossify")
-    }
-
-
-    private fun onWebsiteClick() {
-        launchViewIntent("https://www.fossify.org/")
-    }
-
-    private fun onPrivacyPolicyClick() {
-        val appId = baseConfig.appId.removeSuffix(".debug").removeSuffix(".pro").removePrefix("org.fossify.")
-        val url = "https://www.fossify.org/policy/$appId"
-        launchViewIntent(url)
-    }
-
-    private fun onLicenseClick() {
-        Intent(applicationContext, LicenseActivity::class.java).apply {
-            putExtra(APP_ICON_IDS, intent.getIntegerArrayListExtra(APP_ICON_IDS) ?: ArrayList<String>())
-            putExtra(APP_LAUNCHER_NAME, intent.getStringExtra(APP_LAUNCHER_NAME) ?: "")
-            putExtra(APP_LICENSES, intent.getLongExtra(APP_LICENSES, 0))
-            startActivity(this)
-        }
-    }
-
-    private fun onVersionClick() {
-        if (firstVersionClickTS == 0L) {
-            firstVersionClickTS = System.currentTimeMillis()
-            Handler(Looper.getMainLooper()).postDelayed({
-                firstVersionClickTS = 0L
-                clicksSinceFirstClick = 0
-            }, EASTER_EGG_TIME_LIMIT)
-        }
-
-        clicksSinceFirstClick++
-        if (clicksSinceFirstClick >= EASTER_EGG_REQUIRED_CLICKS) {
-            toast(R.string.hello)
-            firstVersionClickTS = 0L
-            clicksSinceFirstClick = 0
-        }
-    }
+//    private val appName get() = intent.getStringExtra(APP_NAME) ?: ""
+//
+//    private var firstVersionClickTS = 0L
+//    private var clicksSinceFirstClick = 0
+//
+//    companion object {
+//        private const val EASTER_EGG_TIME_LIMIT = 3000L
+//        private const val EASTER_EGG_REQUIRED_CLICKS = 7
+//    }
+//
+//    override fun onCreate(savedInstanceState: Bundle?) {
+//        super.onCreate(savedInstanceState)
+//        enableEdgeToEdgeSimple()
+//        setContent {
+//            val context = LocalContext.current
+//            val resources = context.resources
+//            AppThemeSurface {
+//                val showExternalLinks = remember { !resources.getBoolean(R.bool.hide_all_external_links) }
+//                val showGoogleRelations = remember { !resources.getBoolean(R.bool.hide_google_relations) }
+//                val onEmailClickAlertDialogState = getOnEmailClickAlertDialogState()
+//                val rateStarsAlertDialogState = getRateStarsAlertDialogState()
+//                val onRateUsClickAlertDialogState = getOnRateUsClickAlertDialogState(rateStarsAlertDialogState::show)
+//                AboutScreen(
+//                    goBack = ::finish,
+//                    helpUsSection = {
+//                        val showHelpUsSection =
+//                            remember { showGoogleRelations || !showExternalLinks }
+//                        HelpUsSection(
+//                            onRateUsClick = {
+//                                onRateUsClick(
+//                                    showConfirmationAdvancedDialog = onRateUsClickAlertDialogState::show,
+//                                    showRateStarsDialog = rateStarsAlertDialogState::show
+//                                )
+//                            },
+//                            onInviteClick = ::onInviteClick,
+//                            onContributorsClick = ::onContributorsClick,
+//                            showDonate = resources.getBoolean(R.bool.show_donate_in_about) && showExternalLinks,
+//                            onDonateClick = ::onDonateClick,
+//                            showInvite = showHelpUsSection,
+//                            showRateUs = showHelpUsSection
+//                        )
+//                    },
+//                    aboutSection = {
+//                        val setupFAQ = rememberFAQ()
+//                        if (!showExternalLinks || setupFAQ) {
+//                            AboutSection(setupFAQ = setupFAQ, onFAQClick = ::launchFAQActivity, onEmailClick = {
+//                                onEmailClick(onEmailClickAlertDialogState::show)
+//                            })
+//                        }
+//                    },
+//                    socialSection = {
+//                        if (showExternalLinks) {
+//                            SocialSection(
+//                                onGithubClick = ::onGithubClick,
+//                                onRedditClick = ::onRedditClick,
+//                                onTelegramClick = ::onTelegramClick
+//                            )
+//                        }
+//                    }
+//                ) {
+//                    val (showWebsite, fullVersion) = showWebsiteAndFullVersion(resources, showExternalLinks)
+//                    OtherSection(
+//                        showMoreApps = showGoogleRelations,
+//                        onMoreAppsClick = ::launchMoreAppsFromUsIntent,
+//                        showWebsite = showWebsite,
+//                        onWebsiteClick = ::onWebsiteClick,
+//                        showPrivacyPolicy = showExternalLinks,
+//                        onPrivacyPolicyClick = ::onPrivacyPolicyClick,
+//                        onLicenseClick = ::onLicenseClick,
+//                        version = fullVersion,
+//                        onVersionClick = ::onVersionClick
+//                    )
+//                }
+//            }
+//        }
+//    }
+//
+//    @Composable
+//    private fun rememberFAQ() = remember { !(intent.getSerializableExtra(APP_FAQ) as? ArrayList<FAQItem>).isNullOrEmpty() }
+//
+//    @Composable
+//    private fun showWebsiteAndFullVersion(
+//        resources: Resources,
+//        showExternalLinks: Boolean,
+//    ): Pair<Boolean, String> {
+//        val showWebsite = remember { resources.getBoolean(R.bool.show_donate_in_about) && !showExternalLinks }
+//        var version = intent.getStringExtra(APP_VERSION_NAME) ?: ""
+//        if (baseConfig.appId.removeSuffix(".debug").endsWith(".pro")) {
+//            version += " ${getString(R.string.pro)}"
+//        }
+//        val fullVersion = remember { String.format(getString(R.string.version_placeholder, version)) }
+//        return Pair(showWebsite, fullVersion)
+//    }
+//
+//    @Composable
+//    private fun getRateStarsAlertDialogState() =
+//        rememberAlertDialogState().apply {
+//            DialogMember {
+//                RateStarsAlertDialog(alertDialogState = this, onRating = ::rateStarsRedirectAndThankYou)
+//            }
+//        }
+//
+//    @Composable
+//    private fun getOnEmailClickAlertDialogState() =
+//        rememberAlertDialogState().apply {
+//            DialogMember {
+//                ConfirmationAdvancedAlertDialog(
+//                    alertDialogState = this,
+//                    message = "${getString(R.string.before_asking_question_read_faq)}\n\n${getString(R.string.make_sure_latest)}",
+//                    messageId = null,
+//                    positive = R.string.read_faq,
+//                    negative = R.string.skip
+//                ) { success ->
+//                    if (success) {
+//                        launchFAQActivity()
+//                    } else {
+//                        launchEmailIntent("freuss48@gmail.com")
+//                    }
+//                }
+//            }
+//        }
+//
+//    @Composable
+//    private fun getOnRateUsClickAlertDialogState(showRateStarsDialog: () -> Unit) =
+//        rememberAlertDialogState().apply {
+//            DialogMember {
+//                ConfirmationAdvancedAlertDialog(
+//                    alertDialogState = this,
+//                    message = "${getString(R.string.before_asking_question_read_faq)}\n\n${getString(R.string.make_sure_latest)}",
+//                    messageId = null,
+//                    positive = R.string.read_faq,
+//                    negative = R.string.skip
+//                ) { success ->
+//                    if (success) {
+//                        launchFAQActivity()
+//                    } else {
+//                        launchRateUsPrompt(showRateStarsDialog)
+//                    }
+//                }
+//            }
+//        }
+//
+//    private fun onEmailClick(
+//        showConfirmationAdvancedDialog: () -> Unit,
+//    ) {
+//        if (intent.getBooleanExtra(SHOW_FAQ_BEFORE_MAIL, false) && !baseConfig.wasBeforeAskingShown) {
+//            baseConfig.wasBeforeAskingShown = true
+//            showConfirmationAdvancedDialog()
+//        } else {
+//            launchEmailIntent("freuss48@gmail.com")
+//        }
+//    }
+//
+//    private fun launchFAQActivity() {
+//        val faqItems = intent.getSerializableExtra(APP_FAQ) as ArrayList<FAQItem>
+//        Intent(applicationContext, FAQActivity::class.java).apply {
+//            putExtra(APP_ICON_IDS, intent.getIntegerArrayListExtra(APP_ICON_IDS) ?: ArrayList<String>())
+//            putExtra(APP_LAUNCHER_NAME, intent.getStringExtra(APP_LAUNCHER_NAME) ?: "")
+//            putExtra(APP_FAQ, faqItems)
+//            startActivity(this)
+//        }
+//    }
+//
+//    private fun launchEmailIntent(address: String) {
+//        val appVersion = String.format(getString(R.string.app_version, intent.getStringExtra(APP_VERSION_NAME)))
+//        val deviceOS = String.format(getString(R.string.device_os), Build.VERSION.RELEASE)
+//        val newline = "\n"
+//        val separator = "------------------------------"
+//        val body = "$appVersion$newline$deviceOS$newline$separator$newline$newline"
+//        val selectorIntent = Intent(ACTION_SENDTO)
+//            .setData("mailto:$address".toUri())
+//        val emailIntent = Intent(ACTION_SEND).apply {
+//            putExtra(EXTRA_EMAIL, arrayOf(address))
+//            putExtra(EXTRA_SUBJECT, appName)
+//            putExtra(EXTRA_TEXT, body)
+//            selector = selectorIntent
+//        }
+//
+//        try {
+//            startActivity(emailIntent)
+//        } catch (e: ActivityNotFoundException) {
+//            val chooser = createChooser(emailIntent, getString(R.string.send_email))
+//            try {
+//                startActivity(chooser)
+//            } catch (e: Exception) {
+//                toast(R.string.no_email_client_found)
+//            }
+//        } catch (e: Exception) {
+//            showErrorToast(e)
+//        }
+//    }
+//
+//    private fun onRateUsClick(
+//        showConfirmationAdvancedDialog: () -> Unit,
+//        showRateStarsDialog: () -> Unit,
+//    ) {
+//        if (baseConfig.wasBeforeRateShown) {
+//            launchRateUsPrompt(showRateStarsDialog)
+//        } else {
+//            baseConfig.wasBeforeRateShown = true
+//            showConfirmationAdvancedDialog()
+//        }
+//    }
+//
+//    private fun launchRateUsPrompt(
+//        showRateStarsDialog: () -> Unit,
+//    ) {
+//        if (baseConfig.wasAppRated) {
+//            redirectToRateUs()
+//        } else {
+//            showRateStarsDialog()
+//        }
+//    }
+//
+//    private fun onInviteClick() {
+//        val text = String.format(getString(R.string.share_text), appName, getStoreUrl())
+//        Intent().apply {
+//            action = ACTION_SEND
+//            putExtra(EXTRA_SUBJECT, appName)
+//            putExtra(EXTRA_TEXT, text)
+//            type = "text/plain"
+//            startActivity(createChooser(this, getString(R.string.invite_via)))
+//        }
+//    }
+//
+//    private fun onContributorsClick() {
+//        val intent = Intent(applicationContext, ContributorsActivity::class.java)
+//        startActivity(intent)
+//    }
+//
+//
+//    private fun onDonateClick() {
+//        startActivity(Intent(applicationContext, DonationActivity::class.java))
+//    }
+//
+//    private fun onGithubClick() {
+//        launchViewIntent("https://github.com/FossifyOrg")
+//    }
+//
+//    private fun onRedditClick() {
+//        launchViewIntent("https://www.reddit.com/r/Fossify")
+//    }
+//
+//
+//    private fun onTelegramClick() {
+//        launchViewIntent("https://t.me/Fossify")
+//    }
+//
+//
+//    private fun onWebsiteClick() {
+//        launchViewIntent("https://www.fossify.org/")
+//    }
+//
+//    private fun onPrivacyPolicyClick() {
+//        val appId = baseConfig.appId.removeSuffix(".debug").removeSuffix(".pro").removePrefix("org.fossify.")
+//        val url = "https://www.fossify.org/policy/$appId"
+//        launchViewIntent(url)
+//    }
+//
+//    private fun onLicenseClick() {
+//        Intent(applicationContext, LicenseActivity::class.java).apply {
+//            putExtra(APP_ICON_IDS, intent.getIntegerArrayListExtra(APP_ICON_IDS) ?: ArrayList<String>())
+//            putExtra(APP_LAUNCHER_NAME, intent.getStringExtra(APP_LAUNCHER_NAME) ?: "")
+//            putExtra(APP_LICENSES, intent.getLongExtra(APP_LICENSES, 0))
+//            startActivity(this)
+//        }
+//    }
+//
+//    private fun onVersionClick() {
+//        if (firstVersionClickTS == 0L) {
+//            firstVersionClickTS = System.currentTimeMillis()
+//            Handler(Looper.getMainLooper()).postDelayed({
+//                firstVersionClickTS = 0L
+//                clicksSinceFirstClick = 0
+//            }, EASTER_EGG_TIME_LIMIT)
+//        }
+//
+//        clicksSinceFirstClick++
+//        if (clicksSinceFirstClick >= EASTER_EGG_REQUIRED_CLICKS) {
+//            toast(R.string.hello)
+//            firstVersionClickTS = 0L
+//            clicksSinceFirstClick = 0
+//        }
+//    }
 }

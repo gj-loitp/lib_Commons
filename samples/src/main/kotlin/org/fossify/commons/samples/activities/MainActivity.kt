@@ -114,6 +114,9 @@ class MainActivity : BaseSimpleActivity() {
     }
 
     override fun getAppLauncherName() = getString(R.string.commons_app_name)
+    override fun getRepositoryName(): String? {
+        return ""
+    }
 
     override fun getAppIconIDs() = arrayListOf(
         R.mipmap.ic_launcher_red,
@@ -137,5 +140,5 @@ class MainActivity : BaseSimpleActivity() {
         R.mipmap.ic_launcher_grey_black
     )
 
-    override fun getRepositoryName() = "General-Discussion"
+//    override fun getRepositoryName() = "General-Discussion"
 }
